@@ -13,7 +13,7 @@
 
   :resource-paths ["resources"]
 
-  :dependencies [[org.clojure/clojure "1.11.1"]]
+  :dependencies [[org.clojure/clojure "1.11.1"] [criterium "0.4.6"]]
 
   :repl-options {:init-ns otus-02.core}
 
