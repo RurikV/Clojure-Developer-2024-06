@@ -1,4 +1,4 @@
-(ns otus-04.homework.scramblies-test
+(ns homework.scramblies-test
   (:require
    [clojure.test :refer :all]
    [otus-04.homework.scramblies :refer [scramble?]]))

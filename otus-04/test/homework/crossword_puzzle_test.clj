@@ -1,4 +1,4 @@
-(ns otus-04.homework.crossword-puzzle-test
+(ns homework.crossword-puzzle-test
   (:require
    [clojure.test :refer :all]
    [otus-04.homework.crossword-puzzle :refer [solve]]))

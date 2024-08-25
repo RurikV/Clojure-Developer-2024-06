@@ -1,4 +1,4 @@
-(ns otus-04.homework.magic-square-test
+(ns homework.magic-square-test
   (:require
    [clojure.test :refer :all]
    [otus-04.homework.magic-square :refer [magic-square]]))
