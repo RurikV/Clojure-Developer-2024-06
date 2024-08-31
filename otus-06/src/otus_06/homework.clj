@@ -1,4 +1,6 @@
-(ns otus-06.homework)
+(ns otus-06.homework
+  (:require [clojure.string :as str]
+            [clojure.java.io :as io]))
 
 ;; Загрузить данные из трех файлов на диске.
 ;; Эти данные сформируют вашу базу данных о продажах.
@@ -94,3 +96,116 @@
 
 
 ;; Файлы находятся в папке otus-06/resources/homework
+
+(def data-store (atom {:customers [] :products [] :sales []}))
+
+(def file-path "./resources/homework/")
+
+(defn parse-line [separator line]
+  (str/split line separator))
+
+(defn read-file [file-name separator]
+  (let [full-path (str file-path file-name)]
+    (try
+      (with-open [rdr (io/reader full-path)]
+        (doall (map #(parse-line separator %) (line-seq rdr))))
+      (catch java.io.FileNotFoundException e
+        (println (str "Error: File not found - " full-path))
+        [])
+      (catch Exception e
+        (println (str "Error reading file: " (.getMessage e)))
+        []))))
+
+(defn load-data [file-type file-name]
+  (let [data (read-file file-name #"\|")]
+    (if (seq data)
+      (do
+        (swap! data-store assoc file-type data)
+        (println (str "Successfully loaded " (count data) " records for " (name file-type) ".")))
+      (println (str "Failed to load data for " (name file-type) ".")))))
+
+(defn display-customer-table []
+  (doseq [[id name address phone] (:customers @data-store)]
+    (println (str id ": [\"" name "\" \"" address "\" \"" phone "\"]"))))
+
+(defn display-product-table []
+  (doseq [[id description cost] (:products @data-store)]
+    (println (str id ": [\"" description "\" \"" cost "\"]"))))
+
+(defn display-sales-table []
+  (doseq [[id cust-id prod-id count] (:sales @data-store)]
+    (let [customer-name (second (nth (:customers @data-store) (dec (Integer/parseInt cust-id))))
+          product-desc (second (nth (:products @data-store) (dec (Integer/parseInt prod-id))))]
+      (println (str id ": [\"" customer-name "\" \"" product-desc "\" \"" count "\"]")))))
+
+(defn total-sales-for-customer [customer-name]
+  (let [customer (first (filter #(= (second %) customer-name) (:customers @data-store)))
+        customer-id (first customer)]
+    (if customer
+      (let [customer-sales (filter #(= (second %) customer-id) (:sales @data-store))
+            total (reduce + (for [sale customer-sales
+                                  :let [prod-id (nth sale 2)
+                                        count (Integer/parseInt (nth sale 3))
+                                        price (Double/parseDouble (nth (nth (:products @data-store) (dec (Integer/parseInt prod-id))) 2))]]
+                              (* count price)))]
+        (format "%.2f" total))
+      "0.00")))
+
+(defn total-count-for-product [product-name]
+  (let [product (first (filter #(= (second %) product-name) (:products @data-store)))
+        product-id (first product)]
+    (if product
+      (reduce + (map #(Integer/parseInt (nth % 3))
+                     (filter #(= (nth % 2) product-id) (:sales @data-store))))
+      0)))
+
+(defn display-menu []
+  (println "\n*** Sales Menu ***")
+  (println "------------------")
+  (println "1. Display Customer Table")
+  (println "2. Display Product Table")
+  (println "3. Display Sales Table")
+  (println "4. Total Sales for Customer")
+  (println "5. Total Count for Product")
+  (println "6. Exit")
+  (print "\nEnter an option? ")
+  (flush))
+
+(defn run-menu []
+  (loop []
+    (display-menu)
+    (let [choice (read-line)]
+      (case choice
+        "1" (do (display-customer-table) (recur))
+        "2" (do (display-product-table) (recur))
+        "3" (do (display-sales-table) (recur))
+        "4" (do
+              (print "Enter customer name: ")
+              (flush)
+              (let [name (read-line)
+                    total (total-sales-for-customer name)]
+                (println (str name ": $" total)))
+              (recur))
+        "5" (do
+              (print "Enter product name: ")
+              (flush)
+              (let [name (read-line)
+                    count (total-count-for-product name)]
+                (println (str name ": " count)))
+              (recur))
+        "6" (println "Goodbye!")
+        (do (println "Invalid option. Please try again.") (recur))))))
+
+(defn start []
+  (println "Welcome to the Sales Management System")
+  (println "Loading data files...")
+  (load-data :customers "cust.txt")
+  (load-data :products "prod.txt")
+  (load-data :sales "sales.txt")
+  (if (and (seq (:customers @data-store))
+           (seq (:products @data-store))
+           (seq (:sales @data-store)))
+    (run-menu)
+    (println "Failed to load all required data. Please check your file paths and try again.")))
+
+;;(start)
