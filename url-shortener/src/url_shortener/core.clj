@@ -7,6 +7,15 @@
 (def alphabet
   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
 
+;; State
+(defonce ^:private *counter (atom 0))
+(defonce ^:private *mapping (ref {}))
+
+(defn clear-all-mappings!
+  "Clear all shortened URL mappings. Use only for testing."
+  []
+  (dosync (ref-set *mapping {}))
+  (reset! *counter 0))
 
 ;; Logic
 (defn- get-idx [i]
@@ -16,6 +25,8 @@
   (get alphabet (rem i alphabet-size)))
 
 (defn int->id [id]
+  (when (neg? id)
+    (throw (IllegalArgumentException. "ID must be a non-negative integer")))
   (if (< id alphabet-size)
     (str (get-character-by-idx id))
     (let [codes (->> (iterate get-idx id)

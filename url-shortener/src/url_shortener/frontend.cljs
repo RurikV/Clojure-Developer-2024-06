@@ -1,12 +1,12 @@
 (ns url-shortener.frontend
-  (:require-macros [cljs.core.async.macros :refer [go]])
-  (:require [reagent.core :as reagent]
-            [reagent.dom.client :as rdomc]
+  (:require [reagent.core :as r]
+            [reagent.dom :as rdom]
             [cljs-http.client :as http]
-            [cljs.core.async :refer [<!]]))
+            [cljs.core.async :refer [<!]])
+  (:require-macros [cljs.core.async.macros :refer [go]]))
 
-(defonce *app-state (reagent/atom {:page :main
-                                   :short-url ""}))
+(defonce *app-state (r/atom {:page :main
+                             :short-url ""}))
 
 (defn header [text]
   [:h2 {:style {:margin "8px 4px"}}
@@ -14,7 +14,7 @@
 
 (defn short-page []
   (let [short-url (:short-url @*app-state)]
-    [:<>
+    [:div
      [header "Your short link"]
      [:div {:style {:margin "16px 4px"}}
       [:a {:target "_blank"
@@ -24,10 +24,21 @@
                                  (swap! *app-state assoc :page :main))}
       "BACK"]]))
 
+(defn shorten-url [url]
+  (go (let [response (<! (http/post "/" {:json-params {:url url}}))]
+        (if (:success response)
+          (let [id        (-> response :body :id)
+                host      (.. js/window -location -href)
+                short-url (str host id)]
+            (swap! *app-state assoc
+                   :short-url short-url
+                   :page :short))
+          (js/console.log "Something went wrong: " response)))))
+
 (defn main-page []
-  (let [*input-value (reagent/atom "")]
+  (let [*input-value (r/atom "")]
     (fn []
-      [:<>
+      [:div
        [header "Shorten a long link"]
        [:label {:for "url-input"
                 :style {:margin-left 4}}
@@ -43,15 +54,7 @@
         [:button.block.accent
          {:on-click (fn [_e]
                       (when (seq @*input-value)
-                        (go (let [response (<! (http/post "/" {:json-params {:url @*input-value}}))]
-                              (if (:success response)
-                                (let [id        (-> response :body :id)
-                                      host      (.. js/window -location -href)
-                                      short-url (str host id)]
-                                  (js/console.log short-url)
-                                  (reset! *app-state {:short-url short-url
-                                                      :page :short}))
-                                (js/console.log "Something went wrong: " response))))))}
+                        (shorten-url @*input-value)))}
          "SHORTEN IT"]]])))
 
 (defn app []
@@ -64,11 +67,8 @@
        :short [short-page]
        [header "Page not found"])]))
 
-(defonce root-el
-  (rdomc/create-root (js/document.getElementById "root")))
-
-(defn ^:dev/after-load mountit []
-  (rdomc/render root-el [app]))
+(defn mount-root []
+  (rdom/render [app] (.getElementById js/document "app")))
 
 (defn init []
-  (mountit))
+  (mount-root))
