@@ -19,18 +19,18 @@
 ;; https://jsoup.org/apidocs/org/jsoup/nodes/Element.html
 
 (def cards
-  (.select soup "div[class^=item] > div[class^=card]"))
+  (.select soup "div[class^=_container] > div[class^=_card]"))
 
 (comment
   (count cards)
   
   (-> (first cards)
-      (.select "div[class^=header] h3[class^=title]")
+      (.select "div[class^=_header] h3[class^=_title]")
       (.text)) 
 
   (-> (first cards)
-      (.selectFirst "div[class^=header]")
-      (.selectFirst "a[class^=link]")
+      (.selectFirst "div[class^=_header]")
+      (.selectFirst "a[class^=_link]")
       (.attr "href")))
 
 ;;
@@ -41,17 +41,17 @@
                           (http/get)
                           :body)
         soup  (Jsoup/parse html)
-        cards (.select soup "div[class^=item] > div[class^=card]")]
+        cards (.select soup "div[class^=_container] > div[class^=_card]")]
     (mapv (fn [card]
-            (let [header (.selectFirst card "div[class^=header]")
-                  title  (-> (.select header "h3[class^=title]")
+            (let [header (.selectFirst card "div[class^=_header]")
+                  title  (-> (.select header "h3[class^=_title]")
                              (.text))
-                  date   (-> (.selectFirst header "div[class^=info] time")
+                  date   (-> (.selectFirst header "div[class^=_info] time")
                              (.attr "datetime")
                              (LocalDate/parse))
-                  link   (-> (.selectFirst header "a[class^=link]")
+                  link   (-> (.selectFirst header "a[class^=_link]")
                              (.attr "href"))
-                  author (-> (.select header "div[class^=author] div[class^=name]")
+                  author (-> (.select header "div[class^=_author] div[class^=_name]")
                              (.text))]
               {:title  title
                :date   date
@@ -74,23 +74,23 @@
 (defn get-next-page [page current-page]
   (let [next-page (inc current-page)
         next?     (-> page
-                      (.selectFirst (format "div[class^=paginator] > a[class^=link]:containsOwn(%s)" next-page))
+                      (.selectFirst (format "div[class^=_paginator] > a[class^=_link]:containsOwn(%s)" next-page))
                       (some?))]
     (when next?
       next-page)))
 
 (defn extract-headers [page]
-  (->> (.select page "div[class^=item] > div[class^=card]")
+  (->> (.select page "div[class^=_container] > div[class^=_card]")
        (mapv (fn [card]
-               (let [header (.selectFirst card "div[class^=header]")
-                     title  (-> (.select header "h3[class^=title]")
+               (let [header (.selectFirst card "div[class^=_header]")
+                     title  (-> (.select header "h3[class^=_title]")
                                 (.text))
-                     date   (-> (.selectFirst header "div[class^=info] time")
+                     date   (-> (.selectFirst header "div[class^=_info] time")
                                 (.attr "datetime")
                                 (LocalDate/parse))
-                     link   (-> (.selectFirst header "a[class^=link]")
+                     link   (-> (.selectFirst header "a[class^=_link]")
                                 (.attr "href"))
-                     author (-> (.select header "div[class^=author] div[class^=name]")
+                     author (-> (.select header "div[class^=_author] div[class^=_name]")
                                 (.text))]
                  {:title  title
                   :date   date
@@ -153,18 +153,18 @@
        :url    url}))
 
   (extract-data [_ page]
-    (let [cards (.select page "div[class^=item] > div[class^=card]")]
+    (let [cards (.select page "div[class^=_container] > div[class^=_card]")]
       (->> cards
            (mapv (fn [card]
-                   (let [header (.selectFirst card "div[class^=header]")
-                         title  (-> (.select header "h3[class^=title]")
+                   (let [header (.selectFirst card "div[class^=_header]")
+                         title  (-> (.select header "h3[class^=_title]")
                                     (.text))
-                         date   (-> (.selectFirst header "div[class^=info] time")
+                         date   (-> (.selectFirst header "div[class^=_info] time")
                                     (.attr "datetime")
                                     (LocalDate/parse))
-                         link   (-> (.selectFirst header "a[class^=link]")
+                         link   (-> (.selectFirst header "a[class^=_link]")
                                     (.attr "href"))
-                         author (-> (.select header "div[class^=author] div[class^=name]")
+                         author (-> (.select header "div[class^=_author] div[class^=_name]")
                                     (.text))]
                      {:title  title
                       :date   date
@@ -174,7 +174,7 @@
   (next-options [_ page {current-page :page :as opts}]
     (let [next-page (inc current-page)
           next?     (-> page
-                        (.selectFirst (format "div[class^=paginator] > a[class^=link]:containsOwn(%s)" next-page))
+                        (.selectFirst (format "div[class^=_paginator] > a[class^=_link]:containsOwn(%s)" next-page))
                         (some?))]
       (assoc opts :page (when next? next-page))))
 

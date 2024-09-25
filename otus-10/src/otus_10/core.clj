@@ -233,6 +233,33 @@
 ;;  * when you need polymorphism
 ;;  * when you need to participate in existing protocols or interfaces,
 
+;; Annotations 
+
+(definterface Foo (foo []))
+
+(deftype ;; annotations on type
+    ^{Deprecated true
+      Retention RetentionPolicy/RUNTIME
+      javax.annotation.processing.SupportedOptions ["foo" "bar" "baz"]
+      javax.xml.ws.soap.Addressing {:enabled false :required true}}
+    Bar [^int a
+         ;; on field
+         ^{:tag int
+           Deprecated true
+           Retention RetentionPolicy/RUNTIME
+           javax.annotation.processing.SupportedOptions ["foo" "bar" "baz"]
+           javax.xml.ws.soap.Addressing {:enabled false :required true}}
+         b]
+  ;; on method
+  Foo (^{Deprecated true
+         Retention RetentionPolicy/RUNTIME
+         javax.annotation.processing.SupportedOptions ["foo" "bar" "baz"]
+         javax.xml.ws.soap.Addressing {:enabled false :required true}}
+       foo [this] 42))
+
+(println (seq (.getAnnotations Bar)))
+(println (seq (.getAnnotations (.getField Bar "b"))))
+(println (seq (.getAnnotations (.getMethod Bar "foo" nil))))
 
 ;; extend-via-metadata
 
