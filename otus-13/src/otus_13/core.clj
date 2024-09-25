@@ -152,7 +152,7 @@
     response
     (let [v (-> (slurp body :encoding "Windows-1251")
                 (csv/read-csv :separator \;))]
-                              (assoc response :body v))))
+      (assoc response :body v))))
 
 
 (-> (http/get "https://iss.moex.com/iss/engines/stock/markets.csv"
@@ -239,7 +239,8 @@
 
 ;; async request
 (http/get (make-url "delay/5")
-          {:async? true :as :json}
+          {:async? true
+           :as :json}
           (fn [response] (println "response is:" (:body response)))
           (fn [exception] (println "exception message is: " (.getMessage exception))))
 
@@ -256,9 +257,9 @@
                                             (take 5))
                                  :next (when (< page 10)
                                          (inc page))}})
-      :body :data
+      :body
+      :data
       (cheshire/parse-string true)))
-
 
 (defn get-paginated-data [current-page]
   (lazy-seq

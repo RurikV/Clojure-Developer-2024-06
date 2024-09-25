@@ -38,10 +38,10 @@
 
 ;; a: b, d
 ;; b: a, c
-;; c: b, e, g
+;; c: b, e
 ;; d: a, e, f
 ;; e: c, d
-;; f: d
+;; f: d, g
 ;; g: c
 
 ;; *** пример
@@ -49,17 +49,11 @@
 (def gr
   {:a [:b :d]
    :b [:a :c]
-   :c [:b :e :g]
+   :c [:b :e]
    :d [:a :e :f]
    :e [:c :d]
-   :f [:d]
+   :f [:d :g]
    :g [:c]})
-
-(def gr2
-  {:a [nil [:b :d]]
-   :b [:a [:c]]
-   ;; ...
-   })
 
 ;; * clojure.walk
 
@@ -68,6 +62,8 @@
 (comment
   (w/walk (fn [x] (if (number? x) (str x) x))
           identity bin-tree)
+  ;; ^ walk не рекурсивен сам по себе,
+  ;; нужно на его основе писать свой обходчик:
 
   (letfn [(sum [t]
             (cond (coll? t)
@@ -105,28 +101,7 @@
       z/right
       z/down))
 
-;; FIXME: broken
-(comment
-  (loop [c (z/vector-zip bin-tree)]
-    (let [n (if (odd? (z/node c))
-              (z/edit c + 100)
-              c)]
-      (if (z/branch? n)
-        (recur (z/down n))
-        (loop [n (z/up n)
-               prev n]
-          (let [[found n]
-                (cond (nil? n)
-                      [true (z/root prev)]
-
-                      (nil? (z/right n))
-                      (recur (z/up n) n)
-
-                      [false (z/right n)])]
-            (if found n
-                (recur n))))))))
-
-;; ** zipper
+;; ** функция zipper и самодельные "застёжки"
 
 (def gr-zipper
   (z/zipper
@@ -134,6 +109,11 @@
    #(get gr %)
    (fn [n _] n)
    :a))
+
+(defn tap [z]
+  (let [n (z/node z)]
+    (println n)
+    z))
 
 (comment
   (-> gr-zipper
@@ -143,6 +123,73 @@
       z/down
       z/right
       z/right
+      tap
       z/children))
 
 ;; * Поиск
+
+;; ** Depth-first search, поиск в глубину
+
+(defn dfs [done? branch start]
+  (loop [visited #{}
+         queue (list [start '()])]
+    (when (not-empty queue)
+      (let [[[pos path] & other] queue]
+        (cond (done? pos)
+              (reverse (cons pos path))
+
+              (visited pos)
+              (recur visited other)
+
+              :else
+              (let [new-path (cons pos path)]
+                (recur (conj visited pos)
+                       (concat (for [v (branch pos)]
+                                 [v new-path])
+                               other))))))))
+
+(comment
+  (dfs #(= % :g)
+       #(get gr %)
+       :b)
+  ;; => (:b :a :d :f :g)
+
+  ;; если поменять порядок вариантов при ветвлении,
+  ;; результат будет другой!
+  (dfs #(= % :g)
+       #(reverse (get gr %))
+       :b)
+  ;; => (:b :c :e :d :f :g)
+  )
+
+;; ** Breadth-first search, поиск в ширину
+
+(defn bfs [done? branch start]
+  (loop [visited #{}
+         state {start '()}]
+    (if-let [k (first (filter done? (keys state)))]
+      (reverse (cons k (state k)))
+
+      (when (not-empty state)
+        (recur (into visited (keys state))
+               (into {}
+                     (for [[p ps] state
+                           :let [path (cons p ps)]
+                           v (branch p)
+                           :when (not (visited v))]
+                       [v path])))))))
+
+(comment
+  (bfs #(= % :g)
+       #(get gr %)
+       :b)
+  ;; => (:b :a :d :f :g)
+
+  ;; изменение порядка вариантов при ветвленни не влияет
+  ;; на длину найденного пути (но может быть выбран другой
+  ;; путь той же длины, если таковых несколько)
+  (bfs #(= % :g)
+       #(reverse (get gr %))
+       :b)
+  ;; => (:b :a :d :f :g)
+  )
